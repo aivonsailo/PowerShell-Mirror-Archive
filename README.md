@@ -61,6 +61,7 @@ You can customize the execution by passing parameters to the script:
 | :--- | :--- | :--- |
 | `-ConfigPath` | Path to your CSV file | `.\folders.csv` |
 | `-LogPath` | Where to save the logs | `.\logs\` |
+| `-ArchiveDir` | Where to save archived files | `.\Archive\` |
 | `-DaysToKeep` | How many days to keep archives | `30` |
 
 ---
