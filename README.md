@@ -5,7 +5,7 @@ A robust PowerShell backup solution that keeps two directories in sync using `ro
 ## ✨ Features
 
 *   **Mirror Sync:** Keeps the destination identical to the source.
-*   **Smart Archiving:** If a file is deleted from the source, the script moves the destination's copy to an archive folder instead of deleting it permanently.
+*   **Archiving:** If a file is deleted from the source, the script moves the destination's copy to an archive folder instead of deleting it permanently.
 *   **Date-Stamped Files:** Archived files are renamed with a timestamp to prevent overwriting.
 *   **Auto-Cleanup:** Automatically removes archives older than **X** days (default: 30).
 *   **Windows Notifications:** Sends a native Toast notification to the Action Center upon completion.
