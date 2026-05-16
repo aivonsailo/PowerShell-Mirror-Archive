@@ -1,4 +1,3 @@
-korjaa tämä readme.md vastaamaan uusia muokkauksia ja anna vastauksena raaka md versio:
 
 # 🛡️ PowerShell Robocopy Sync with Archiving
 
@@ -10,7 +9,7 @@ A robust PowerShell backup solution that keeps two directories in sync using `ro
 * **Optional Archiving:** Toggle archiving on or off. When enabled, files deleted from the source are moved to a timestamped archive folder instead of being lost.
 * **Date-Stamped Files:** Archived files are automatically renamed with a precise timestamp to prevent overwriting older versions.
 * **Auto-Cleanup:** Automatically purges archive folders older than **X** days to save space.
-* **JSON Configuration:** Driven completely by a centralized configuration file instead of messy script parameters.
+* **JSON Configuration:** Driven by a centralized configuration file.
 * **CSV Driven:** Manage multiple backup directory pairs easily via a simple CSV schema.
 * **Windows Notifications:** Sends a native Windows balloon notification upon completion.
 
