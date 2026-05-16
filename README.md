@@ -31,7 +31,7 @@ D:\Projects,E:\Backup\Projects
 ```
 
 ### 3. Configure your config.json file
-Create a file named `folders.csv` in the same directory as the script. Use the following format:
+Configure `config.json` or use defaul values :
 
 ```json
 {
@@ -71,7 +71,7 @@ Run the provided `setup-task.ps1` as **Administrator** to create a daily schedul
 
 ## ⚙️ Parameters
 
-The script now accepts only one optional parameter if you prefer to store your configuration file somewhere else:
+The script accepts only one optional parameter if you prefer to store your configuration file somewhere else:
 
 
 | Parameter | Description | Default |
@@ -97,13 +97,6 @@ You can customize the script behavior inside config.json:
 
 ---
 
-## 🛠️ Installation
-
-1.  Right-click `setup-task.ps1`.
-2.  Select **Run with PowerShell** (as Administrator).
-3.  The script will automatically link to the backup logic in the same folder.
-
----
 
 ## 📄 License
 
