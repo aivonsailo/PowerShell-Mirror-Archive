@@ -30,14 +30,27 @@ C:\Users\Name\Documents,E:\Backup\Documents
 D:\Projects,E:\Backup\Projects
 ```
 
-### 3. Test the script
+### 3. Configure your config.json file
+Create a file named `folders.csv` in the same directory as the script. Use the following format:
+
+```json
+{
+    "FoldersCsvPath": "./folders.csv",
+    "LogPath": "./logs/BackupLog.txt",
+    "ArchiveDir": "./archive",
+    "DaysToKeep": 30,
+    "EnableArchiving": true
+}
+```
+
+### 4. Test the script
 Run the script manually in PowerShell to ensure paths and permissions are correct:
 
 ```powershell
 .\backup-script.ps1
 ```
 
-### 4. Schedule the backup
+### 5. Schedule the backup
 Run the provided `setup-task.ps1` as **Administrator** to create a daily scheduled task at 18:00.
 
 *   The task is set to *"Run as soon as possible if missed"*.
