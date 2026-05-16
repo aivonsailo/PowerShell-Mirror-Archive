@@ -1,0 +1,7 @@
+{
+    "FoldersCsvPath": "./folders.csv",
+    "LogPath": "./logs/BackupLog.txt",
+    "ArchiveDir": "./archive",
+    "DaysToKeep": 30,
+    "EnableArchiving": true
+}

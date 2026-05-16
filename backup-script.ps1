@@ -1,30 +1,17 @@
 <#
 .SYNOPSIS
-    Robocopy-based backup script with pre-sync archiving.
+    Robocopy-based backup script driven by a JSON configuration file.
 .DESCRIPTION
-    1. Reads source/destination pairs from a CSV file.
-    2. Detects files that exist in destination but are missing from source.
-    3. Moves those files to a timestamped archive instead of deleting them.
-    4. Performs a 'robocopy /MIR' to synchronize the directories.
-    5. Cleans up old archives and sends a Windows Toast notification.
+    1. Loads settings from a JSON configuration file.
+    2. Reads source/destination pairs from a CSV file.
+    3. If archiving is enabled, moves modified/deleted destination files to a timestamped archive.
+    4. Performs a 'robocopy /MIR' to synchronize directories.
+    5. Cleans up old archives (if archiving is enabled) and sends a Windows notification.
 #>
 
 Param(
-    [string]$ConfigPath = "$PSScriptRoot\folders.csv",
-    [string]$LogPath    = "$PSScriptRoot\logs\BackupLog.txt",
-    [string]$ArchiveDir = "$PSScriptRoot\archive",
-    [int]$DaysToKeep    = 30
+    [string]$ConfigPath = "$PSScriptRoot\config.json"
 )
-
-# --- INITIALIZATION ---
-
-$logDir = Split-Path $LogPath -Parent
-if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
-if (-not (Test-Path $ArchiveDir)) { New-Item -ItemType Directory -Path $ArchiveDir -Force | Out-Null }
-
-$totalArchivedCount = 0
-$failedFolders = @()
-$globalSuccess = $true
 
 # --- FUNCTIONS ---
 
@@ -37,8 +24,10 @@ function Log {
     $color = switch($type) { "ERROR" {"Red"} "WARNING" {"Yellow"} Default {"White"} }
     Write-Host $line -ForegroundColor $color
     
-    # Write to log file
-    $line | Add-Content -Path $LogPath
+    # Write to log file if the log path is initialized
+    if ($global:LogPath) {
+        $line | Add-Content -Path $global:LogPath
+    }
 }
 
 function Show-Notification {
@@ -59,16 +48,61 @@ function Show-Notification {
     }
 }
 
-# --- MAIN PROCESS ---
+function Resolve-ScriptPath {
+    param([string]$Path)
+    # If the path is already absolute, return it; otherwise, resolve it relative to the script root
+    if ([System.IO.Path]::IsPathRooted($Path)) { return $Path }
+    return [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot $Path))
+}
 
-Log "=== Backup Process Started ==="
+# --- CONFIGURATION LOADING ---
 
 if (-not (Test-Path $ConfigPath)) {
-    Log "Configuration file not found at $ConfigPath" "ERROR"
+    Write-Host "[ERROR] Configuration file not found at: $ConfigPath" -ForegroundColor Red
     exit
 }
 
-$directories = Import-Csv -Path $ConfigPath
+try {
+    # Parse JSON configuration file
+    $jsonConfig = Get-Content -Raw -Path $ConfigPath | ConvertFrom-Json
+    
+    # Resolve absolute paths safely
+    $FoldersCsvPath  = Resolve-ScriptPath $jsonConfig.FoldersCsvPath
+    $global:LogPath  = Resolve-ScriptPath $jsonConfig.LogPath
+    $ArchiveDir      = Resolve-ScriptPath $jsonConfig.ArchiveDir
+    $DaysToKeep      = [int]$jsonConfig.DaysToKeep
+    $EnableArchiving = [bool]$jsonConfig.EnableArchiving
+} catch {
+    Write-Host "[ERROR] Failed to parse configuration file: $($_.Exception.Message)" -ForegroundColor Red
+    exit
+}
+
+# --- INITIALIZATION ---
+
+# Ensure log directory exists
+$logDir = Split-Path $global:LogPath -Parent
+if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+
+# Ensure archive directory exists ONLY if archiving feature is enabled
+if ($EnableArchiving -and -not (Test-Path $ArchiveDir)) { 
+    New-Item -ItemType Directory -Path $ArchiveDir -Force | Out-Null 
+}
+
+$totalArchivedCount = 0
+$failedFolders = @()
+$globalSuccess = $true
+
+# --- MAIN PROCESS ---
+
+Log "=== Backup Process Started ==="
+Log "Archiving feature status: $(if ($EnableArchiving) { 'ENABLED' } else { 'DISABLED' })"
+
+if (-not (Test-Path $FoldersCsvPath)) {
+    Log "Folders CSV file not found at $FoldersCsvPath" "ERROR"
+    exit
+}
+
+$directories = Import-Csv -Path $FoldersCsvPath
 
 foreach ($pair in $directories) {
     # Guard against empty rows in the CSV
@@ -94,42 +128,44 @@ foreach ($pair in $directories) {
         New-Item -ItemType Directory -Path $dest -Force | Out-Null
     }
 
-    # 1. ARCHIVING (Pre-Sync)
-    Log "Scanning for files to archive..."
-    $todayFolder = Join-Path $ArchiveDir ((Get-Date).ToString("yyyy-MM-dd"))
-    $timeLabel = Get-Date -Format "HHmm"
+    # 1. ARCHIVING (Pre-Sync) - Only executed if enabled in config
+    if ($EnableArchiving) {
+        Log "Scanning for files to archive..."
+        $todayFolder = Join-Path $ArchiveDir ((Get-Date).ToString("yyyy-MM-dd"))
+        $timeLabel = Get-Date -Format "HHmm"
 
-    try {
-        # .NET EnumerateFiles is significantly faster than Get-ChildItem for large directories
-        $destFiles = [System.IO.Directory]::EnumerateFiles($dest, "*", [System.IO.SearchOption]::AllDirectories)
-        
-        foreach ($file in $destFiles) {
-            # Calculate the relative path from the destination root
-            $relativePath = $file.Substring($dest.Length).TrimStart('\')
-            $sourcePath = Join-Path $src $relativePath
+        try {
+            # .NET EnumerateFiles is significantly faster than Get-ChildItem for large directories
+            $destFiles = [System.IO.Directory]::EnumerateFiles($dest, "*", [System.IO.SearchOption]::AllDirectories)
+            
+            foreach ($file in $destFiles) {
+                $relativePath = $file.Substring($dest.Length).TrimStart('\')
+                $sourcePath = Join-Path $src $relativePath
 
-            # If the file exists in destination but no longer in source, move it to archive
-            if (-not (Test-Path $sourcePath)) {
-                $fileName = [System.IO.Path]::GetFileName($file)
-                $ext = [System.IO.Path]::GetExtension($fileName)
-                $base = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
-                $archiveName = "${base}_$((Get-Date).ToString('yyyyMMdd'))_$($timeLabel)$ext"
-                
-                $targetDir = Join-Path $todayFolder (Split-Path $relativePath -Parent)
-                $targetPath = Join-Path $targetDir $archiveName
+                # If file exists in destination but no longer in source, safely move to archive
+                if (-not (Test-Path $sourcePath)) {
+                    $fileName = [System.IO.Path]::GetFileName($file)
+                    $ext = [System.IO.Path]::GetExtension($fileName)
+                    $base = [System.IO.Path]::GetFileNameWithoutExtension($fileName)
+                    $archiveName = "${base}_$((Get-Date).ToString('yyyyMMdd'))_$($timeLabel)$ext"
+                    
+                    $targetDir = Join-Path $todayFolder (Split-Path $relativePath -Parent)
+                    $targetPath = Join-Path $targetDir $archiveName
 
-                try {
-                    if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
-                    # Using Move-Item for speed (instant pointer update on the same drive)
-                    Move-Item -Path $file -Destination $targetPath -Force -ErrorAction Stop
-                    $totalArchivedCount++
-                } catch {
-                    Log "Failed to archive $relativePath : $($_.Exception.Message)" "WARNING"
+                    try {
+                        if (-not (Test-Path $targetDir)) { New-Item -ItemType Directory -Path $targetDir -Force | Out-Null }
+                        Move-Item -Path $file -Destination $targetPath -Force -ErrorAction Stop
+                        $totalArchivedCount++
+                    } catch {
+                        Log "Failed to archive $relativePath : $($_.Exception.Message)" "WARNING"
+                    }
                 }
             }
+        } catch {
+            Log "Error scanning destination directory $dest : $($_.Exception.Message)" "ERROR"
         }
-    } catch {
-        Log "Error scanning destination directory $dest : $($_.Exception.Message)" "ERROR"
+    } else {
+        Log "Archiving is disabled. Skipping scanning step."
     }
 
     # 2. SYNCHRONIZATION (Robocopy Mirror)
@@ -145,15 +181,14 @@ foreach ($pair in $directories) {
     }
 }
 
-# 3. CLEANUP OLD ARCHIVES
-if (Test-Path $ArchiveDir) {
+# 3. CLEANUP OLD ARCHIVES - Only executed if archiving is enabled and directory exists
+if ($EnableArchiving -and (Test-Path $ArchiveDir)) {
     Log "Cleaning up archives older than $DaysToKeep days..."
     $limit = (Get-Date).AddDays(-$DaysToKeep)
     
     Get-ChildItem -Path $ArchiveDir -Directory | ForEach-Object {
         try {
-            # Try to parse the folder name into a Date object. 
-            # If the format doesn't match yyyy-MM-dd, ParseExact will throw a FormatException.
+            # Try to parse folder name into a Date object. Throws FormatException if it doesn't match yyyy-MM-dd
             $parsedDate = [DateTime]::ParseExact($_.Name, "yyyy-MM-dd", [System.Globalization.CultureInfo]::InvariantCulture)
             
             if ($parsedDate -lt $limit) {
@@ -161,7 +196,7 @@ if (Test-Path $ArchiveDir) {
                 Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
             }
         } catch [System.FormatException] {
-            # Silently ignore folders that do not match the expected date naming convention
+            # Silently ignore non-date folders inside the archive root
         }
     }
 }
@@ -171,6 +206,7 @@ Log "=== Backup Process Completed ==="
 # --- FINAL NOTIFICATION ---
 
 $status = if ($globalSuccess) { "Success" } else { "Errors in: $($failedFolders -join ', ')" }
-$summary = "Status: $status`nArchived: $totalArchivedCount files.`nOld archives cleaned ($DaysToKeep days)."
+$archiveSummary = if ($EnableArchiving) { "Archived: $totalArchivedCount files.`nOld archives cleaned ($DaysToKeep days)." } else { "Archiving: Disabled." }
+$summary = "Status: $status`n$archiveSummary"
 
 Show-Notification -title "Backup Report" -message $summary
