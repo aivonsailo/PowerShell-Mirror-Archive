@@ -1,15 +1,18 @@
+korjaa tämä readme.md vastaamaan uusia muokkauksia ja anna vastauksena raaka md versio:
+
 # 🛡️ PowerShell Robocopy Sync with Archiving
 
 A robust PowerShell backup solution that keeps two directories in sync using `robocopy /MIR`. It ensures no data is lost by archiving files that would otherwise be deleted during synchronization.
 
 ## ✨ Features
 
-*   **Mirror Sync:** Keeps the destination identical to the source.
-*   **Archiving:** If a file is deleted from the source, the script moves the destination's copy to an archive folder instead of deleting it permanently.
-*   **Date-Stamped Files:** Archived files are renamed with a timestamp to prevent overwriting.
-*   **Auto-Cleanup:** Automatically removes archives older than **X** days (default: 30).
-*   **Windows Notifications:** Sends a native Toast notification to the Action Center upon completion.
-*   **CSV Driven:** Manage multiple backup tasks easily via a simple CSV file.
+* **Mirror Sync:** Keeps the destination identical to the source.
+* **Optional Archiving:** Toggle archiving on or off. When enabled, files deleted from the source are moved to a timestamped archive folder instead of being lost.
+* **Date-Stamped Files:** Archived files are automatically renamed with a precise timestamp to prevent overwriting older versions.
+* **Auto-Cleanup:** Automatically purges archive folders older than **X** days to save space.
+* **JSON Configuration:** Driven completely by a centralized configuration file instead of messy script parameters.
+* **CSV Driven:** Manage multiple backup directory pairs easily via a simple CSV schema.
+* **Windows Notifications:** Sends a native Windows balloon notification upon completion.
 
 ---
 
@@ -45,6 +48,7 @@ Run the provided `setup-task.ps1` as **Administrator** to create a daily schedul
 ## 📂 File Structure
 
 *   `backup-script.ps1`: The main logic for syncing and archiving.
+*   `config.json`: Centralized settings file (paths, retention, toggle for archiving).
 *   `setup-task.ps1`: Helper script to install the Windows Scheduled Task.
 *   `folders.csv`: Your configuration file.
 *   `logs/`: Directory where execution logs are stored.
