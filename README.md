@@ -58,15 +58,29 @@ Run the provided `setup-task.ps1` as **Administrator** to create a daily schedul
 
 ## ⚙️ Parameters
 
-You can customize the execution by passing parameters to the script:
+The script now accepts only one optional parameter if you prefer to store your configuration file somewhere else:
 
 
 | Parameter | Description | Default |
 | :--- | :--- | :--- |
-| `-ConfigPath` | Path to your CSV file | `.\folders.csv` |
-| `-LogPath` | Where to save the logs | `.\logs\` |
-| `-ArchiveDir` | Where to save archived files | `.\Archive\` |
-| `-DaysToKeep` | How many days to keep archives | `30` |
+| `-ConfigPath` | Path to your custom JSON configuration file | `$PSScriptRoot\config.json` |
+
+
+---
+
+## ⚙️ Configuration Parameters (config.json)
+
+You can customize the script behavior inside config.json:
+
+
+| Key | Type | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `FoldersCsvPath` | String | Path to the CSV file listing backup folders. | `./folders.csv` |
+| `LogPath` | String | File path where execution logs are appended. | `./logs/BackupLog.txt` |
+| `ArchiveDir` | String | Directory where archived files are stored. | `./archive` |
+| `DaysToKeep` | Integer | Retention period: how many days old archives are kept. | `30` |
+| `EnableArchiving` | Boolean | Set to true to archive deleted files, or false to just mirror. | `true` |
+
 
 ---
 
