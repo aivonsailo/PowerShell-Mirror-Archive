@@ -147,4 +147,4 @@ Log "=== Backup Process Completed ==="
 $status = if ($globalSuccess) { "Success" } else { "Errors in: $($failedFolders -join ', ')" }
 $summary = "Status: $status`nArchived: $totalArchivedCount files.`nOld archives cleaned ($DaysToKeep days)."
 
-Show-Toast -title "Backup Report" -message $summary
+Show-Notification -title "Backup Report" -message $summary
