@@ -42,21 +42,6 @@ function Log {
     $line | Add-Content -Path $LogPath
 }
 
-function Show-Toast {
-    param([string]$title, [string]$message)
-    # Native Windows Toast Notification (Persists in Action Center)
-    try {
-        [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-        $xml = "<toast><visual><binding template='ToastGeneric'><text>$title</text><text>$message</text></binding></visual></toast>"
-        $xmlDoc = New-Object Windows.Data.Xml.Dom.XmlDocument
-        $xmlDoc.LoadXml($xml)
-        $toast = [Windows.UI.Notifications.ToastNotification]::new($xmlDoc)
-        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("PowerShell").Show($toast)
-    } catch {
-        Log "Failed to send toast notification" "WARNING"
-    }
-}
-
 # --- MAIN PROCESS ---
 
 Log "=== Backup Process Started ==="
